@@ -1,0 +1,14 @@
+.vs/
+CHSearch/bin/
+CHSearch/obj/
+packages/
+FsLab.Journal/bin/
+FsLab.Journal/obj/
+FsLab.Journal/output/
+PocoGeneration/bin/
+PocoGeneration/obj/
+.gitignore~
+..gitignore.un~
+.gitignore.swp
+FsLab.Journal/paket-files/paket.restore.cached
+PocoGeneration/generated/CompanyInfo.cs
