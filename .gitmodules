@@ -1,0 +1,6 @@
+[submodule "LiteDB"]
+	path = LiteDB
+	url = https://github.com/mbdavid/LiteDB.git
+[submodule "JsonCSharpClassGenerator"]
+	path = JsonCSharpClassGenerator
+	url = https://github.com/JsonCSharpClassGenerator/JsonCSharpClassGenerator.git

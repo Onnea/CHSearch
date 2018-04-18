@@ -9,7 +9,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PocoGeneration", "PocoGener
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JsonClassGeneratorLib", "JsonCSharpClassGenerator\JsonCSharpClassGeneratorLib\JsonClassGeneratorLib.csproj", "{7BEF7EAA-DE37-40FB-BD33-3DEF0685031F}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LiteDB", "..\LiteDB\LiteDB\LiteDB.csproj", "{03516C4B-124D-47A5-974A-AC169A29E0C2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LiteDB", "LiteDB\LiteDB\LiteDB.csproj", "{03516C4B-124D-47A5-974A-AC169A29E0C2}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsLab.Journal", "FsLab.Journal\FsLab.Journal.fsproj", "{12670CAB-1F4A-4D02-AE1D-44CFC4E1E40A}"
 EndProject

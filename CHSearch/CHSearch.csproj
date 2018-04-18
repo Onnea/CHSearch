@@ -65,7 +65,7 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\LiteDB\LiteDB\LiteDB.csproj">
+    <ProjectReference Include="..\LiteDB\LiteDB\LiteDB.csproj">
       <Project>{03516c4b-124d-47a5-974a-ac169a29e0c2}</Project>
       <Name>LiteDB</Name>
     </ProjectReference>
