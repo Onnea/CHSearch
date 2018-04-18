@@ -47,28 +47,109 @@ namespace Onnea
             public bool WasFetchedFromWeb;
         }
 
+        public class FetchedRange
+        {
+            [JsonProperty("id")]
+            public int FetchedRangeId { get; set; }
+
+            [JsonProperty( "start" )]
+            public int Start { get; set; }
+
+            [JsonProperty( "end" )]
+            public int End { get; set; }
+
+            public override string ToString()
+            => $"{nameof(FetchedRangeId)}={FetchedRangeId}, {nameof(Start)}={Start}, {nameof(End)}={End}";
+        }
+
         /// <returns>A sequence of company numbers together with whether they were actually fetched from the web.</returns>
         public static IEnumerable<FetchResult> Fetch( LiteDatabase db, int from, int count )
         {
-            // Get a collection (or create, if doesn't exist)
-            LiteCollection<Onnea.DTO.CompanyInfo> companies = db.GetCollection<DTO.CompanyInfo>( "companies" );
-
+            var companies     = db.GetCollection<DTO.CompanyInfo>( "companies"     );
+            var fetchedRanges = db.GetCollection<FetchedRange>   ( "fetchedRanges" );
+            
             companies.EnsureIndex( nameof( DTO.CompanyInfo.DoesNotExist ), unique: false );
 
             var companyNumberList = Enumerable.Range( from, count ).ToList();
             var companyNumbersToFetch = new HashSet<int>( companyNumberList );//06052617, 600 * 12 * 24 * 7);//08264572, 1000 );
-
+            
             var publishingQueue = new BlockingCollection<FetchCompanyJson.Result>();
 
-            // Populate the list of known companies that do not need to be fetched.
-            var allKnownCompanyNumbers = new HashSet<int>( companies.FindAll().Select( c => c.CompanyInfoId ) );
+            // Populate the list of known company id ranges that do not need to be fetched.
+            var fetchedRangesList = fetchedRanges.FindAll().ToList();
 
-            Task fetcher = Task.Run( () =>
-                FetchCompanyJson.Run( Definitions.ApiKey,
-                                      companyNumbersToFetch,
-                                      companyNumber => allKnownCompanyNumbers.Contains( companyNumber ),
-                                      publishingQueue ) );
+            // If we have not yet ever recorded any fetched ranges, use the very slow method of 
+            // populate the list of known fetched ranges from the existing database.
+            if ( !fetchedRangesList.Any() )
+            { 
+                var allExistingCompanyNumbers = companies.FindAll().Select( c => c.CompanyInfoId );
+                var first = allExistingCompanyNumbers.Min();
+                var last  = allExistingCompanyNumbers.Max();
+                var currentRangeStart = -1;
+                var prevCompanyNumber = -1;
+                var completedRangesCount = 0;
 
+                for ( var currCompanyNumber = first; currCompanyNumber < last; ++currCompanyNumber )
+                {
+                    if ( currentRangeStart == -1 )
+                    {
+                        currentRangeStart = currCompanyNumber;
+                    }
+                    
+                    if ( prevCompanyNumber == -1 )
+                    {
+                        prevCompanyNumber = currCompanyNumber;
+                        continue;
+                    }
+                    
+                    if ( currCompanyNumber - prevCompanyNumber > 1 )
+                    {
+                        var completedRange = new FetchedRange()
+                        {
+                            FetchedRangeId = completedRangesCount++,
+                            Start          = currentRangeStart,
+                            End            = prevCompanyNumber
+                        };
+                        fetchedRangesList.Add( completedRange );
+                        currentRangeStart = currCompanyNumber;
+                    }
+                    prevCompanyNumber = currCompanyNumber;
+                }
+
+                if ( currentRangeStart != -1 )
+                {
+                    var completedRange = new FetchedRange()
+                    {
+                        FetchedRangeId = completedRangesCount++,
+                        Start          = currentRangeStart,
+                        End            = last
+                    };
+                    
+                    fetchedRangesList.Add( completedRange );
+                }
+                
+                fetchedRangesList.ForEach( completedRange => fetchedRanges.Upsert( completedRange ) );
+            }
+            
+            Task fetcher = Task.Run( async () =>
+            {
+                try
+                {
+                    await FetchCompanyJson.Run( 
+                        Definitions.ApiKey,
+                        companyNumbersToFetch,
+                        companyNumber => 
+                            fetchedRangesList.Any( 
+                                r => r.Start <= companyNumber &&  companyNumber <= r.End ),
+                        publishingQueue );
+                }
+                catch ( Exception e )
+                {
+                    Console.Error.WriteLine( $"{e.Message}:\n{e.StackTrace}" );
+                }
+            } );
+
+            int resultCount = 0;
             foreach ( var result in publishingQueue.GetConsumingEnumerable() )
             {
                 if ( result.Success )
@@ -78,28 +159,48 @@ namespace Onnea
                         // This company JSON was fetched from the web.
                         DTO.CompanyInfo ci = UpsertCompany( result.Json, companies );
                         //Console.WriteLine( JsonConvert.SerializeObject(ci, Newtonsoft.Json.Formatting.Indented ) );
-                    }
-                    //Console.WriteLine(
-                    //    $"\n-------Fetching {result.CompanyNumber} OK   : {( result.Json != null ? "JSON upserted" : result.Message )}-------" );
+                    }                    
+                    //Console.WriteLine($"\n-------Fetching {result.CompanyNumber} OK   : {( result.Json != null ? "JSON upserted" : result.Message )}-------" );
+                    Console.Write( $".{( ++resultCount % 100 == 0 ? "\n" : "")}" );
                 }
                 else
                 {
-                    UpsertCompany( JsonConvert.SerializeObject( new DTO.CompanyInfo() 
-                                                                { 
-                                                                    CompanyNumber = $"{result.CompanyNumber}", 
-                                                                    DoesNotExist = true 
-                                                                } ), companies );
+                    UpsertCompany( JsonConvert.SerializeObject( 
+                        new DTO.CompanyInfo() 
+                        { 
+                            CompanyNumber = $"{result.CompanyNumber}", 
+                            DoesNotExist = true 
+                        } ), companies );
                     //Console.WriteLine( $"-------Fetching {result.CompanyNumber} ERROR: {result.Message?.Substring( 0, Math.Min( result.Message.Length, 60 ) )}-------" );
+                    Console.Write( $"{( ++resultCount % 1000 == 0 ? "." : "")}{(resultCount % 100000 == 0 ? "\n" : "")}" );
                 }
+                
                 yield return (new FetchResult
                 {
                     CompanyNumber     = result.CompanyNumber,
                     WasFetchedFromWeb = result.Json != null || !result.Success 
                 });
+
             }
 
-            //Console.WriteLine( "Waiting for the fetcher to finish..." );
-            fetcher.Wait();   
+            Console.WriteLine( "\nWaiting for the fetcher to finish..." );
+            fetcher.Wait();
+            
+            var fetchStart = companyNumberList.First();
+            var fetchEnd   = companyNumberList.Last();
+
+            if ( !fetchedRangesList.Any( fr => fr.Start <= fetchStart && fetchEnd <= fr.End ) )
+            {
+                var nfr = new FetchedRange()
+                {
+                    FetchedRangeId = fetchedRangesList.Max( fr => fr.FetchedRangeId ) + 1,
+                    Start = fetchStart,
+                    End = fetchEnd
+                };
+                fetchedRanges.Upsert( nfr );
+            }
+            
+            Console.WriteLine( "Waiting for the fetcher to finish..." );
         }
 
         /// <returns>true if the field exists and was indexed</returns>
