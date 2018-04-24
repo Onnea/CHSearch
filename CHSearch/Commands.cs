@@ -223,10 +223,18 @@ namespace Onnea
             companies.Delete( c => c.CompanyInfoId == companyInfoId );
         }
 
-        public static IEnumerable<DTO.CompanyInfo> GetCompanies( LiteDatabase db, Func<DTO.CompanyInfo, bool> predicate )
+        public static IEnumerable<DTO.CompanyInfo> GetCompanies( 
+            LiteDatabase db, Func<DTO.CompanyInfo, bool> predicate )
         {
             LiteCollection<DTO.CompanyInfo> companies = db.GetCollection<DTO.CompanyInfo>( "companies" );
             return companies.FindAll().Where( c => predicate(c) );
+        }
+
+        public static IEnumerable<DTO.CompanyInfo> GetCompaniesWhere( 
+            LiteDatabase db, string field, Func<BsonValue, bool> predicate )
+        {
+            var companies = db.GetCollection<DTO.CompanyInfo>( "companies" );
+            return companies.Find( Query.Where( field, predicate ) );
         }
     }
 }

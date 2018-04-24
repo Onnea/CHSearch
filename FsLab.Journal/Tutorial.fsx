@@ -45,10 +45,6 @@ open XPlot.GoogleCharts
 open XPlot.GoogleCharts.Deedle
 open Onnea
 
-Definitions.dbFilePath = @"C:\temp\CHSearch\db\main.db.2018-04-04-23-58-46.zip";
-
-let adf = Commands.Fetch( 2000, 2000 );
-
 let file = __SOURCE_DIRECTORY__ + "/Tutorial.fsx"
 let contents = File.ReadAllText(file)
 printfn "Loaded '%s' of length %d" file contents.Length
