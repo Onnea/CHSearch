@@ -50,7 +50,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="generated\CompanyInfo.cs" />
+    <Compile Include="CompanyInfo.cs" />
+    <Compile Include="generated\CompanyInfoGenerated.cs" />
     <Compile Include="PocoGenerationMain.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

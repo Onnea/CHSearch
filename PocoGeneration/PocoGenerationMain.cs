@@ -17,7 +17,7 @@ namespace Onnea
 				          {
 					          Namespace = $"{nameof(Onnea)}.DTO",
 					          TargetFolder = targetFolder,
-					          MainClass = "CompanyInfo",
+					          MainClass = "CompanyInfoGenerated",
 					          UsePascalCase = true,
 					          SingleFile = true,
 							  Example = schema,
