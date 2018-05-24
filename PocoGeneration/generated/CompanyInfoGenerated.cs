@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace Onnea.DTO
+namespace Onnea.DTO.Generated.CompanyInfo
 {
 
     public class AccountingReferenceDate
@@ -283,9 +283,6 @@ namespace Onnea.DTO
 
         [JsonProperty("does_not_exist")]
         public bool DoesNotExist { get; set; }
-
-        [JsonProperty("company_info_id")]
-        public int CompanyInfoId { get; set; }
 
         [JsonProperty("accounts")]
         public Accounts Accounts { get; set; }

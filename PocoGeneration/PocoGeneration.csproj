@@ -50,15 +50,18 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="CompanyInfo.cs" />
     <Compile Include="generated\CompanyInfoGenerated.cs" />
+    <Compile Include="generated\FilingHistoryListGenerated.cs" />
     <Compile Include="PocoGenerationMain.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
     <None Include="packages.config" />
-    <None Include="schemas\companyProfile.yml">
+    <None Include="schemas\CompanyInfo.yml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="schemas\FilingHistoryList.yml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>

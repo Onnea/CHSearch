@@ -8,28 +8,43 @@ namespace Onnea
     {
         static void Main( string[] args )
         {
-            var schema = File.ReadAllText( "schemas/companyProfile.yml" );
+            var schemas = new[]
+            {
+                "CompanyInfo",
+                "FilingHistoryList"
+            };
 
-            if ( args.Length != 1 ) throw new ArgumentException( $"Usage: {nameof(PocoGenerationMain)}.exe TARGET_FOLDER" );
+            if ( args.Length != 1 )
+            {
+                throw new ArgumentException( 
+                    $"Usage: {nameof( PocoGenerationMain )}.exe TARGET_FOLDER" );
+            }
+
             var targetFolder = args[0];
 
-			var gen = new JsonClassGenerator
-				          {
-					          Namespace = $"{nameof(Onnea)}.DTO",
-					          TargetFolder = targetFolder,
-					          MainClass = "CompanyInfoGenerated",
-					          UsePascalCase = true,
-					          SingleFile = true,
-							  Example = schema,
-                              UseProperties = true
-				          };
+            foreach ( var schemaName in schemas )
+            {
+                var schemaText = 
+                    File.ReadAllText( $"schemas/{schemaName}.yml" );
+                
+                var gen = new JsonClassGenerator
+                {
+                    Namespace = $"{nameof( Onnea )}.DTO.Generated.{schemaName}",
+                    TargetFolder = targetFolder,
+                    MainClass = $"{schemaName}Generated",
+                    UsePascalCase = true,
+                    SingleFile = true,
+                    Example = schemaText,
+                    UseProperties = true
+                };
 
-			using (var sw = new StringWriter())
-			{
-				gen.OutputStream = sw;
-				gen.GenerateClasses();
-				sw.Flush();
-			}
+                using ( var sw = new StringWriter() )
+                {
+                    gen.OutputStream = sw;
+                    gen.GenerateClasses();
+                    sw.Flush();
+                }
+            }
         }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using Onnea.Domain;
 using System;
 using System.IO;
 using System.Linq;
@@ -139,7 +140,7 @@ namespace Onnea
                 else
                 {
                     ret += ". Correct usage is: >index fieldName isUnique([true]/false).\nAvailable names are:\n" + 
-                    string.Join( ", ", typeof( DTO.CompanyInfo ).GetProperties().Select( pi => pi.Name ) );
+                    string.Join( ", ", typeof( CompanyInfo ).GetProperties().Select( pi => pi.Name ) );
                 }
                 #endregion
 

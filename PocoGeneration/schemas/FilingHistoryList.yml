@@ -1,0 +1,49 @@
+﻿{
+   "etag" : "string",
+   "filing_history_status" : "string",
+   "items" : [
+      {
+         "annotations" : [
+            {
+               "annotations" : "string",
+               "date" : "date",
+               "description" : "string"
+            }
+         ],
+         "associated_filings" : [
+            {
+               "date" : "date",
+               "description" : "string",
+               "type" : "string"
+            }
+         ],
+         "barcode" : "string",
+         "category" : "string",
+         "date" : "date",
+         "description" : "string",
+         "links" : {
+            "document_metadata" : "string",
+            "self" : "string"
+         },
+         "pages" : "integer",
+         "paper_filed" : "boolean",
+         "resolutions" : [
+            {
+               "category" : "string",
+               "description" : "string",
+               "document_id" : "string",
+               "receive_date" : "date",
+               "subcategory" : "string",
+               "type" : "string"
+            }
+         ],
+         "subcategory" : "string",
+         "transaction_id" : "string",
+         "type" : "string"
+      }
+   ],
+   "items_per_page" : "integer",
+   "kind" : "string",
+   "start_index" : "integer",
+   "total_count" : "integer"
+}

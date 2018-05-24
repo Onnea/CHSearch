@@ -1,6 +1,5 @@
 ﻿{
 "does_not_exist" : "boolean",
-"company_info_id" : "integer",
 "accounts" : {
     "accounting_reference_date" : {
         "day" : "integer",

@@ -32,6 +32,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Ghostscript.NET, Version=1.2.1.0, Culture=neutral, PublicKeyToken=f85051de34525b59, processorArchitecture=MSIL">
+      <HintPath>..\packages\Ghostscript.NET.1.2.1\lib\net40\Ghostscript.NET.dll</HintPath>
+    </Reference>
     <Reference Include="InteractivePrompt, Version=1.0.5.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\InteractivePrompt.1.0.5\lib\net40\InteractivePrompt.dll</HintPath>
     </Reference>
@@ -40,6 +43,7 @@
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
     <Reference Include="System.IO.Compression" />
     <Reference Include="System.IO.Compression.FileSystem" />
     <Reference Include="System.IO.Compression.ZipFile, Version=4.0.2.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
@@ -55,9 +59,12 @@
   <ItemGroup>
     <Compile Include="Commands.cs" />
     <Compile Include="Definitions.cs" />
+    <Compile Include="Domain\CompanyInfo.cs" />
+    <Compile Include="Domain\FilingHistory.cs" />
     <Compile Include="FetchCompanyJson.cs" />
     <Compile Include="FlakyJsonDateTimeConverter.cs" />
     <Compile Include="CHSearchCLITool.cs" />
+    <Compile Include="PdfToImageConverter.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
