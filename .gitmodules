@@ -1,6 +1,9 @@
 [submodule "LiteDB"]
 	path = LiteDB
-	url = https://github.com/mbdavid/LiteDB.git
+	url = https://github.com/Onnea/LiteDB.git
 [submodule "JsonCSharpClassGenerator"]
 	path = JsonCSharpClassGenerator
 url=https://github.com/Onnea/JsonCSharpClassGenerator.git
+[submodule "tessdata"]
+	path = tessdata
+url=https://github.com/Onnea/tessdata.git
