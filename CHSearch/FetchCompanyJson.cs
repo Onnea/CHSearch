@@ -31,7 +31,7 @@ namespace Onnea
                 var remaining = Int32.Parse(rateLimitRemainValues.First());
                 if ( remaining <= 30 )
                 {
-                    var howLongToSnooze = TimeSpan.FromSeconds( (int) (5 * 60.0 / remaining) );
+                    var howLongToSnooze = TimeSpan.FromSeconds( (int) (5 * 60.0 / Math.Max( 1, remaining )));
                     //snoozeTimes.AddFirst( howLongToSnooze );
                     //var snoozes = snoozeTimes.Take( Math.Min( 5, snoozeTimes.Count ) ).Skip( 1 )
                     //                            .Select( s => $"{s.Minutes}min {s.Seconds}s" );

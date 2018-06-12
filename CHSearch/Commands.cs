@@ -10,68 +10,78 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace Onnea
 {
     public class Commands
     {
-        //static CompanyInfo CompanyFromJson( string json ) 
-        //    => JsonConvert.DeserializeObject<CompanyInfo>( json, new[] { FlakyJsonDateTimeConverter.INSTANCE } );
+        static T TFromJson<T>(string json)
+            => JsonConvert.DeserializeObject<T>(
+                json, new JsonConverter[] { FlakyJsonDateTimeConverter.INSTANCE, 
+                                            FlakyJsonStringListConverter.INSTANCE });
 
-        static T TFromJson<T>( string json ) 
-            => JsonConvert.DeserializeObject<T>( 
-                json, new[] { FlakyJsonDateTimeConverter.INSTANCE } );
-
-        static CompanyInfo UpsertCompany( string                      companyInfoJson, 
-                                          LiteCollection<CompanyInfo> companies )
-        {            
-            var companyInfo = TFromJson<CompanyInfo>( companyInfoJson );
-            companyInfo.CompanyInfoId = int.Parse( companyInfo.CompanyNumber );
+        static CompanyInfo UpsertCompany(string companyInfoJson,
+                                          LiteCollection<CompanyInfo> companies)
+        {
+            var companyInfo = TFromJson<CompanyInfo>(companyInfoJson);
+            companyInfo.CompanyInfoId = int.Parse(companyInfo.CompanyNumber);
             // Insert new customer document (Id will be auto-incremented)
-            companies.Upsert( companyInfo );
+            companies.Upsert(companyInfo);
             return companyInfo;
         }
 
-        static FilingHistory UpsertFilingHistory( 
-                                    CompanyInfo                   companyInfo, 
-                                    string                        filingHistoryJson, 
-                                    DateTime                      asOf,
-                                    LiteCollection<FilingHistory> filingHistories )
-        {       
-            var filingHistory = TFromJson<FilingHistory>( filingHistoryJson );
-            filingHistory.FilingHistoryId = int.Parse( companyInfo.CompanyNumber );
-            filingHistory.AsOf            = asOf;
-            filingHistories.Upsert( filingHistory );
+        static FilingHistory UpsertFilingHistory(
+                                    CompanyInfo companyInfo,
+                                    string filingHistoryJson,
+                                    DateTime asOf,
+                                    LiteCollection<FilingHistory> filingHistories)
+        {
+            var filingHistory = TFromJson<FilingHistory>(filingHistoryJson);
+            filingHistory.FilingHistoryId = int.Parse(companyInfo.CompanyNumber);
+            filingHistory.AsOf = asOf;
+            filingHistories.Upsert(filingHistory);
             return filingHistory;
         }
 
-        public static void BackUpExistingDatabase( string dbFilePath )
+        public static void BackUpExistingDatabase(string dbFilePath)
         {
-            if ( File.Exists( dbFilePath ) )
+            if (File.Exists(dbFilePath))
             {
-                var backupOutputPath = Path.Combine( Path.GetDirectoryName( dbFilePath ), $"main.db.{DateTime.Now.ToString( "yyyy-MM-dd-HH-mm-ss" )}.zip" );
-                Console.WriteLine( $"Backing up database {dbFilePath} to {backupOutputPath}" );
-                using ( ZipArchive zip = ZipFile.Open( backupOutputPath, ZipArchiveMode.Create ) )
+                var backupOutputPath = Path.Combine(Path.GetDirectoryName(dbFilePath), $"main.db.{DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss")}.zip");
+                Console.WriteLine($"Backing up database {dbFilePath} to {backupOutputPath}");
+                using (ZipArchive zip = ZipFile.Open(backupOutputPath, ZipArchiveMode.Create))
                 {
-                    zip.CreateEntryFromFile( dbFilePath, "main.db" );
+                    zip.CreateEntryFromFile(dbFilePath, "main.db");
                 }
             }
         }
 
+        private static LiteDB.BsonMapper _bsonMapper = new BsonMapper();
+
+        static Commands()
+        {
+            _bsonMapper.RegisterType<IList<string>>(
+                sl => new BsonArray(sl.Select(item => new BsonValue(item))),
+                value => value.IsString
+                  ? new string[] { value }
+                  : value.AsArray.Select(item => item.AsString).ToArray());
+        }
+
         public static LiteDatabase GetDatabase( string dbFilePath = null )
-            => new LiteDatabase( dbFilePath ?? Definitions.DbFilePath, 
-                                 LiteDB.BsonMapper.Global );
+            => new LiteDatabase( dbFilePath ?? Definitions.DbFilePath,
+                                 _bsonMapper );
 
         public struct FetchResult
         {
-            public int  CompanyNumber;
+            public int CompanyNumber;
             public bool WasFetchedFromWeb;
         }
 
         public class FetchedRange
         {
-            [JsonProperty("id")]
+            [JsonProperty( "id" )]
             public int FetchedRangeId { get; set; }
 
             [JsonProperty( "start" )]
@@ -81,20 +91,22 @@ namespace Onnea
             public int End { get; set; }
 
             public override string ToString()
-            => $"{nameof(FetchedRangeId)}={FetchedRangeId}, {nameof(Start)}={Start}, {nameof(End)}={End}";
+            => $"{nameof( FetchedRangeId )}={FetchedRangeId}, {nameof( Start )}={Start}, {nameof( End )}={End}";
         }
 
         /// <returns>A sequence of company numbers together with whether they were actually fetched from the web.</returns>
         public static IEnumerable<FetchResult> Fetch( LiteDatabase db, int from, int count )
         {
-            var companies     = db.GetCollection<CompanyInfo> ( "companies"     );
+            Console.WriteLine( $"Fetching company info from {from} to {from + count - 1}" );
+
+            var companies = db.GetCollection<CompanyInfo>( "companies" );
             var fetchedRanges = db.GetCollection<FetchedRange>( "fetchedRanges" );
-            
+
             companies.EnsureIndex( nameof( CompanyInfo.DoesNotExist ), unique: false );
 
             var companyNumberList = Enumerable.Range( from, count ).ToList();
             var companyNumbersToFetch = new HashSet<int>( companyNumberList );//06052617, 600 * 12 * 24 * 7);//08264572, 1000 );
-            
+
             var publishingQueue = new BlockingCollection<FetchCompanyJson.Result>();
 
             // Populate the list of known company id ranges that do not need to be fetched.
@@ -103,10 +115,10 @@ namespace Onnea
             // If we have not yet ever recorded any fetched ranges, use the very slow method of 
             // populate the list of known fetched ranges from the existing database.
             if ( !fetchedRangesList.Any() )
-            { 
+            {
                 var allExistingCompanyNumbers = companies.FindAll().Select( c => c.CompanyInfoId );
                 var first = allExistingCompanyNumbers.Min();
-                var last  = allExistingCompanyNumbers.Max();
+                var last = allExistingCompanyNumbers.Max();
                 var currentRangeStart = -1;
                 var prevCompanyNumber = -1;
                 var completedRangesCount = 0;
@@ -117,20 +129,20 @@ namespace Onnea
                     {
                         currentRangeStart = currCompanyNumber;
                     }
-                    
+
                     if ( prevCompanyNumber == -1 )
                     {
                         prevCompanyNumber = currCompanyNumber;
                         continue;
                     }
-                    
+
                     if ( currCompanyNumber - prevCompanyNumber > 1 )
                     {
                         var completedRange = new FetchedRange()
                         {
                             FetchedRangeId = completedRangesCount++,
-                            Start          = currentRangeStart,
-                            End            = prevCompanyNumber
+                            Start = currentRangeStart,
+                            End = prevCompanyNumber
                         };
                         fetchedRangesList.Add( completedRange );
                         currentRangeStart = currCompanyNumber;
@@ -143,26 +155,26 @@ namespace Onnea
                     var completedRange = new FetchedRange()
                     {
                         FetchedRangeId = completedRangesCount++,
-                        Start          = currentRangeStart,
-                        End            = last
+                        Start = currentRangeStart,
+                        End = last
                     };
-                    
+
                     fetchedRangesList.Add( completedRange );
                 }
-                
+
                 fetchedRangesList.ForEach( completedRange => fetchedRanges.Upsert( completedRange ) );
             }
-            
+
             Task fetcher = Task.Run( async () =>
             {
                 try
                 {
-                    await FetchCompanyJson.Run( 
+                    await FetchCompanyJson.Run(
                         Definitions.ApiKey,
                         companyNumbersToFetch,
-                        companyNumber => 
-                            fetchedRangesList.Any( 
-                                r => r.Start <= companyNumber &&  companyNumber <= r.End ),
+                        companyNumber =>
+                            fetchedRangesList.Any(
+                                r => r.Start <= companyNumber && companyNumber <= r.End ),
                         publishingQueue );
                 }
                 catch ( Exception e )
@@ -181,35 +193,35 @@ namespace Onnea
                         // This company JSON was fetched from the web.
                         CompanyInfo ci = UpsertCompany( result.Json, companies );
                         //Console.WriteLine( JsonConvert.SerializeObject(ci, Newtonsoft.Json.Formatting.Indented ) );
-                    }                    
+                    }
                     //Console.WriteLine($"\n-------Fetching {result.CompanyNumber} OK   : {( result.Json != null ? "JSON upserted" : result.Message )}-------" );
-                    Console.Write( $".{( ++resultCount % 100 == 0 ? "\n" : "")}" );
                 }
                 else
                 {
-                    UpsertCompany( JsonConvert.SerializeObject( 
-                        new CompanyInfo() 
-                        { 
-                            CompanyNumber = $"{result.CompanyNumber}", 
-                            DoesNotExist = true 
+                    UpsertCompany( JsonConvert.SerializeObject(
+                        new CompanyInfo()
+                        {
+                            CompanyNumber = $"{result.CompanyNumber}",
+                            DoesNotExist = true
                         } ), companies );
                     //Console.WriteLine( $"-------Fetching {result.CompanyNumber} ERROR: {result.Message?.Substring( 0, Math.Min( result.Message.Length, 60 ) )}-------" );
-                    Console.Write( $"{( ++resultCount % 1000 == 0 ? "." : "")}{(resultCount % 100000 == 0 ? "\n" : "")}" );
                 }
-                
-                yield return (new FetchResult
+
+                Console.Write( $".{( ++resultCount % 60 == 0 ? ( $"fetched {resultCount}\n" ) : "" )}" );
+
+                yield return ( new FetchResult
                 {
-                    CompanyNumber     = result.CompanyNumber,
-                    WasFetchedFromWeb = result.Json != null || !result.Success 
-                });
+                    CompanyNumber = result.CompanyNumber,
+                    WasFetchedFromWeb = result.Json != null || !result.Success
+                } );
 
             }
 
             Console.WriteLine( "\nWaiting for the fetcher to finish..." );
             fetcher.Wait();
-            
+
             var fetchStart = companyNumberList.First();
-            var fetchEnd   = companyNumberList.Last();
+            var fetchEnd = companyNumberList.Last();
 
             if ( !fetchedRangesList.Any( fr => fr.Start <= fetchStart && fetchEnd <= fr.End ) )
             {
@@ -221,14 +233,14 @@ namespace Onnea
                 };
                 fetchedRanges.Upsert( nfr );
             }
-            
-            Console.WriteLine( "Waiting for the fetcher to finish..." );
+
+            Console.WriteLine( $"Done fetching company info from {from} to {from + count - 1}" );
         }
 
         /// <returns>true if the field exists and was indexed</returns>
         public static bool Index( LiteDatabase db, string fieldName, bool indexIsUnique )
         {
-            if ( fieldName != null && 
+            if ( fieldName != null &&
                  typeof( CompanyInfo ).GetProperties().Any( pi => pi.Name.Equals( fieldName ) ) )
             {
                 LiteCollection<CompanyInfo> companies = db.GetCollection<CompanyInfo>( "companies" );
@@ -245,46 +257,85 @@ namespace Onnea
             companies.Delete( c => c.CompanyInfoId == companyInfoId );
         }
 
-        public static IEnumerable<CompanyInfo> GetCompanies( 
+        public static IEnumerable<CompanyInfo> GetCompanies(
             LiteDatabase db, Func<CompanyInfo, bool> predicate )
         {
             LiteCollection<CompanyInfo> companies = db.GetCollection<CompanyInfo>( "companies" );
-            return companies.FindAll().Where( c => predicate(c) );
+            return companies.FindAll().Where( c => predicate( c ) );
         }
 
-        public static IEnumerable<CompanyInfo> GetCompaniesWhere( 
+        public static IEnumerable<CompanyInfo> GetCompaniesWhere(
             LiteDatabase db, string field, Func<BsonValue, bool> predicate )
         {
             var companies = db.GetCollection<CompanyInfo>( "companies" );
             return companies.Find( Query.Where( field, predicate ) );
         }
 
-        public static FilingHistory GetFilingHistory( LiteDatabase db, 
-                                                      CompanyInfo  companyInfo, 
-                                                      DateTime     asOf )
+        private static HttpClient CreateHttpClientForFilingHistoryFetching()
         {
-            var filingHistories = db.GetCollection<FilingHistory> ( "filingHistories" );
-            
-            var existingFH = filingHistories.FindOne( 
+            HttpClient client = new HttpClient();
+            client.DefaultRequestHeaders.Authorization
+                       = new AuthenticationHeaderValue( Definitions.ApiKey.Trim() );
+            return client;
+        }
+
+        public static IEnumerable<FilingHistory> GetFilingHistories( LiteDatabase db,
+                                                                     IEnumerable<CompanyInfo> companyInfos,
+                                                                     DateTime asOf )
+        {
+            var ciList = companyInfos.OrderBy( ci => ci.CompanyInfoId ).ToList();
+            Console.WriteLine( $@"Fetching filing histories from {
+                ciList.First().CompanyNumber} to {ciList.Last().CompanyNumber}, as of {asOf:yyyyMMdd}" );
+
+            int resultCount = 0;
+            HttpClient httpClient = CreateHttpClientForFilingHistoryFetching();
+
+            foreach ( var companyInfo in ciList )
+            {
+                yield return GetFilingHistory( db, companyInfo, asOf, httpClient );
+                Console.Write( $".{( ++resultCount % 60 == 0 ? ( $"fetched {resultCount}\n" ) : "" )}" );
+            }
+
+            Console.WriteLine( $@"\nDone fetching filing histories from {
+                ciList.First().CompanyNumber} to {ciList.Last().CompanyNumber}, as of {asOf:yyyyMMdd}" );
+        }
+
+        public static FilingHistory GetFilingHistory( LiteDatabase db,
+                                                      CompanyInfo companyInfo,
+                                                      DateTime asOf,
+                                                      HttpClient externalHttpClient = null )
+        {
+            var filingHistories = db.GetCollection<FilingHistory>( "filingHistories" );
+
+            var existingFH = filingHistories.FindOne(
                 Query.EQ( "_id", //aka "FilingHistoryId" 
                           new BsonValue( companyInfo.CompanyInfoId ) ) );
-            if ( existingFH != null && 
+            if ( existingFH != null &&
                  existingFH.AsOf.Date >= asOf.Date )
             {
                 return existingFH;
             }
 
-            HttpClient client = new HttpClient();
-            client.DefaultRequestHeaders.Authorization 
-                       = new AuthenticationHeaderValue( Definitions.ApiKey.Trim() );
+            var httpClient = externalHttpClient ?? CreateHttpClientForFilingHistoryFetching();
             var apiurl = $"https://api.companieshouse.gov.uk/company/{companyInfo.CompanyNumber}/filing-history";
-            HttpResponseMessage response = client.GetAsync( apiurl ).Result;
+            HttpResponseMessage response = httpClient.GetAsync( apiurl ).Result;
             if ( response.IsSuccessStatusCode )
             {
                 string json = response.Content.ReadAsStringAsync().Result;
-                FilingHistory fh = UpsertFilingHistory( companyInfo, json, 
-                    asOf: DateTime.Now.Date, filingHistories: filingHistories );
-                return fh;
+                try
+                {
+                    FilingHistory fh = UpsertFilingHistory( companyInfo, json,
+                        asOf: DateTime.Now.Date, filingHistories: filingHistories );
+                    return fh;
+                }
+                catch ( Exception e )
+                {
+                    var tempFilename = Path.GetTempFileName();
+                    File.WriteAllText( tempFilename, json );
+                    Console.Error.WriteLine( $@"Failed to upsert filing history for {
+                        companyInfo.CompanyNumber}/{asOf:yyyyMMdd}. JSON dumped to {
+                        tempFilename}. Exception was:\n" + e.Message );
+                }
             }
 
             FetchCompanyJson.SnoozeIfRequestQuotaRunningLow( response );
@@ -292,53 +343,120 @@ namespace Onnea
             return null;
         }
 
-        public static IEnumerable<byte[]> GetDocument( DTO.Generated.FilingHistoryList.Item filingHistoryListItem )
+        public static IEnumerable<FileHistoryDocument> GetDocuments( 
+                                                        FilingHistory filingHistory )
         {
-            try
+            Console.WriteLine( $@"Fetching documents for filing history {
+                                            filingHistory.FilingHistoryId}" );
+
+            int resultCount = 0;
+            foreach ( var item in filingHistory.Items )
             {
-                //DocumentMetadata=https://frontend-doc-api.companieshouse.gov.uk/document/FYz4Oxl8s0DZ3pVQqOFX9LwKJ-mnhSjs4ZDSukru4D0
-                //string documentId = filingHistoryListItem.Links.DocumentMetadata.Split( '/' ).Last();
+                yield return GetDocument( item );
+                Console.Write( $".{( ++resultCount % 60 == 0 ? ( $"fetched {resultCount}\n" ) : "" )}" );
+            }
 
-                HttpClient client = new HttpClient();
-                //client.BaseAddress = new Uri("https://document-api.companieshouse.gov.uk/");
-                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
-                    "Basic", System.Convert.ToBase64String(
-                        System.Text.Encoding.UTF8.GetBytes(Definitions.ApiKey)));
+            Console.WriteLine( $@"\nDone fetching documents for filing history {
+                                            filingHistory.FilingHistoryId}" );
+        }
 
-                // For some reason the URL in DocumentMetadata is slightly wrong.
-                var correctedUrl = $@"{filingHistoryListItem.Links.DocumentMetadata.Replace( 
-                                                        "frontend-doc-api", "document-api" ) }";
-                var filepath = correctedUrl;
+        public class FileHistoryDocument
+        {
+            public FileHistoryDocument(string text, IReadOnlyList<string> images)
+            {
+                TextFile   = text;
+                ImageFiles = images;
+            }
 
-                Path.GetInvalidFileNameChars().Concat(Path.GetInvalidPathChars()).ToList()
-                    .ForEach( c => filepath = filepath.Replace( c.ToString(), "_" ) );
-                
+            public string                TextFile      { get; }
+            public IReadOnlyList<string> ImageFiles    { get; }
+        }
+
+        public static FileHistoryDocument GetDocument( 
+            DTO.Generated.FilingHistoryList.Item filingHistoryListItem,
+            int desiredXDpi = 200, int desiredYDpi = 200)
+        {
+            if (filingHistoryListItem?.Links?.DocumentMetadata == null)
+            {
+                return null;
+            }
+
+            var docName = filingHistoryListItem.Links.DocumentMetadata.Split('/').Last();
+
+            // For some reason the URL in DocumentMetadata is slightly wrong.
+            var correctedUrl = $@"{filingHistoryListItem.Links.DocumentMetadata.Replace( 
+                                                    "frontend-doc-api", "document-api" ) }";
+            
+            // The filepath will reflect the URL
+            var filepath = correctedUrl;
+            Path.GetInvalidFileNameChars().Concat(Path.GetInvalidPathChars()).ToList()
+                .ForEach( c => filepath = filepath.Replace( c.ToString(), "_" ) );
+
+            var textFilename = Path.Combine( Definitions.DocumentsTextDirPath, $"{filepath}.txt" );
+
+            if (File.Exists(textFilename))
+            {
+                return new FileHistoryDocument( textFilename,
+                    Directory.GetFiles( Definitions.DocumentsImagesDirPath, $"{filepath}.p*.tif" ) );
+            }
+            else
+            {
                 Directory.CreateDirectory( Definitions.DocumentsMetadataDirPath );
                 Directory.CreateDirectory( Definitions.DocumentsContentDirPath  );
 
                 var metadataFilePath = Path.Combine(Definitions.DocumentsMetadataDirPath, $"{filepath}.metadata.txt");
                 var metadata = File.Exists( metadataFilePath ) ? File.ReadAllText ( metadataFilePath ) : null;
-                
-                // TODO: use doc type from metadata instead of assuming it's always pdf.
-                client.DefaultRequestHeaders.Add( "Accept", "application/pdf" );
+            
                 var contentFilePath = Path.Combine(Definitions.DocumentsContentDirPath,  $"{filepath}.pdf");
                 var content = File.Exists( contentFilePath  ) ? File.ReadAllBytes( contentFilePath  ) : null; 
 
                 var metadataWasCached = metadata != null;
                 var contentWasCached  = content  != null;
 
-                metadata = metadata ?? client.GetStringAsync   ( $"{correctedUrl}"         ).Result;
-                content  = content  ?? client.GetByteArrayAsync( $"{correctedUrl}/content" ).Result;
+                HttpClient httpClient = null;
+
+                if ( !metadataWasCached || !contentWasCached )
+                {
+                    // TODO: use doc type from metadata instead of assuming it's always pdf.
+                    httpClient = new HttpClient();
+                    //client.BaseAddress = new Uri("https://document-api.companieshouse.gov.uk/");
+                    httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+                        "Basic", System.Convert.ToBase64String(
+                            System.Text.Encoding.UTF8.GetBytes(Definitions.ApiKey)));
+                    httpClient.DefaultRequestHeaders.Add( "Accept", "application/pdf" );
+                }
+
+                Console.WriteLine($@"Fetching document from {correctedUrl}");
+                metadata = metadata ?? httpClient.GetStringAsync   ( $"{correctedUrl}"         ).Result;
+                content  = content  ?? httpClient.GetByteArrayAsync( $"{correctedUrl}/content" ).Result;
 
                 if ( !metadataWasCached ) File.WriteAllText ( metadataFilePath, metadata );
                 if ( !contentWasCached  ) File.WriteAllBytes( contentFilePath,  content  );
                 
-                var pagesAsBytes = PdfToImageConverter.CovertPdfToImage( content );
-                return pagesAsBytes;
-            }
-            catch ( Exception e )
-            {
-                return null;
+                var pagesAsBytes = PdfToImageConverter.CovertPdfToImage( content, desiredXDpi, desiredYDpi );
+
+                StringBuilder sb = new StringBuilder();
+                int counter = 0;
+                List<string> imageFilenames = new List<string>();
+                foreach ( var pageImageBytes in pagesAsBytes )
+                {
+                    var textAndConfidence = ImageOCR.OCR( pageImageBytes );
+                    var text       = textAndConfidence.Item1;
+                    var confidence = textAndConfidence.Item2;
+
+                    var pageImageFilename =
+                        Path.Combine( Definitions.DocumentsImagesDirPath, $"{filepath}.p{(++counter)}.{confidence}.tif" );
+                    imageFilenames.Add( pageImageFilename );
+                    File.WriteAllBytes( pageImageFilename, pageImageBytes );
+
+                    sb.Append( String.Join( "\n", text.Split( new[] { "\n" }, StringSplitOptions.RemoveEmptyEntries )) );
+                    Console.Write( $"." );
+                }
+                File.WriteAllText( textFilename, sb.ToString() );
+            
+                Console.WriteLine( "done" );
+
+                return new FileHistoryDocument( textFilename, imageFilenames );
             }
         }
     }

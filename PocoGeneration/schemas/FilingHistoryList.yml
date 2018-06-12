@@ -33,7 +33,7 @@
                "description" : "string",
                "document_id" : "string",
                "receive_date" : "date",
-               "subcategory" : "string",
+               "subcategory" : ["string"],
                "type" : "string"
             }
          ],

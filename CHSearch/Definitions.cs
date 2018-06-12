@@ -12,5 +12,7 @@ namespace Onnea
         private static string DocumentsDirPath          => Path.Combine(BaseDirPath,      "documents" );
         public  static string DocumentsContentDirPath   => Path.Combine(DocumentsDirPath, "content"   );
         public  static string DocumentsMetadataDirPath  => Path.Combine(DocumentsDirPath, "metadata"  );
+        public  static string DocumentsImagesDirPath    => Path.Combine(DocumentsDirPath, "images"    );
+        public  static string DocumentsTextDirPath      => Path.Combine(DocumentsDirPath, "text"      );
     }
 }

@@ -61,7 +61,7 @@ namespace Onnea.DTO.Generated.FilingHistoryList
         public DateTime ReceiveDate { get; set; }
 
         [JsonProperty("subcategory")]
-        public string Subcategory { get; set; }
+        public IList<string> Subcategory { get; set; }
 
         [JsonProperty("type")]
         public string Type { get; set; }

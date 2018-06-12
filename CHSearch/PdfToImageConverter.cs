@@ -23,7 +23,7 @@ namespace Onnea
                 {
                     var img = rasterizer.GetPage( desired_x_dpi, desired_y_dpi, pageNumber );
                     var ms = new MemoryStream();
-                    img.Save( ms, ImageFormat.Jpeg );
+                    img.Save( ms, ImageFormat.Tiff );
                     yield return ms.GetBuffer();
                 }
             }
