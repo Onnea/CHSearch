@@ -433,13 +433,22 @@ namespace Onnea
                 if ( !metadataWasCached ) File.WriteAllText ( metadataFilePath, metadata );
                 if ( !contentWasCached  ) File.WriteAllBytes( contentFilePath,  content  );
                 
-                var pagesAsBytes = PdfToImageConverter.CovertPdfToImage( content, desiredXDpi, desiredYDpi );
+                Console.Write( $@"Converting pages to images.." );
+                var pagesAsBytes = new List<byte[]>();
+                foreach ( var pageImage in PdfToImageConverter.CovertPdfToImage( content, desiredXDpi, desiredYDpi ) )
+                {
+                    Console.Write( "." );
+                    pagesAsBytes.Add( pageImage );
+                }
+                Console.WriteLine( $@"done" );
 
+                Console.Write( $@"OCRing page images.." );
                 StringBuilder sb = new StringBuilder();
                 int counter = 0;
                 List<string> imageFilenames = new List<string>();
                 foreach ( var pageImageBytes in pagesAsBytes )
                 {
+                    Console.Write( $"." );
                     var textAndConfidence = ImageOCR.OCR( pageImageBytes );
                     var text       = textAndConfidence.Item1;
                     var confidence = textAndConfidence.Item2;
@@ -449,8 +458,8 @@ namespace Onnea
                     imageFilenames.Add( pageImageFilename );
                     File.WriteAllBytes( pageImageFilename, pageImageBytes );
 
-                    sb.Append( String.Join( "\n", text.Split( new[] { "\n" }, StringSplitOptions.RemoveEmptyEntries )) );
-                    Console.Write( $"." );
+                    sb.Append( String.Join( "\n", text.Split( new[] { "\n" }, StringSplitOptions.RemoveEmptyEntries )
+                                                      .Where( s => s.Trim() != "" ) ) );
                 }
                 File.WriteAllText( textFilename, sb.ToString() );
             
