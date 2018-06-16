@@ -40,10 +40,9 @@ namespace Onnea
                     Console.WriteLine( $"Snoozing for {howLongToSnooze.Minutes} minutes {howLongToSnooze.Seconds} seconds as remaining attempts for time slot is {remaining}.");
                     Thread.Sleep( howLongToSnooze );
                 }
-                else if ( remaining % 10 == 0 )
+                else if ( remaining % 100 == 0 || ( remaining < 100 && remaining % 10 == 0 ) )
                 {
                     Console.WriteLine( $"Number of attempts remaing for time slot is {remaining}" );
-                        
                 }
             }
         }

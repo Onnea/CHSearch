@@ -18,7 +18,7 @@ let db = Commands.GetDatabase( @"C:\temp\CHSearch\db\temp.db" )
 
 db.GetCollection("companies").FindAll() |> Seq.take 100 |> Seq.iter (fun c -> System.Console.WriteLine( c.ToString().Substring( 0, 80) ))
 
-let adf = Commands.Fetch( db, from = 314330, count = 15 );
+let adf = Commands.FetchCompanyInfos( db, from = 314330, count = 15 );
 let fetched = adf |> Seq.toList //|> Seq.length
 let fromWeb = fetched |> Seq.where (fun r -> r.WasFetchedFromWeb) |> Seq.toList
 //Commands.Index( db, "CompanyName", false )
@@ -58,9 +58,9 @@ let docos =
                            (fhi |> snd).Items |> Seq.map (fun i -> Commands.GetDocument(i) ) )
     |> List.ofSeq
 
-let lines = docos.Item 3 |> snd |> Seq.map( fun fhd -> fhd.TextFile |> File.ReadAllLines )
+let lines = docos.Item 5 |> snd |> Seq.map( fun fhd -> fhd.TextFile |> File.ReadAllLines )
 
-lines |> Seq.map (Seq.item 1) |> Seq.take 6 |> List.ofSeq
+lines |> Seq.map (Seq.item 1) |> Seq.take 8 |> List.ofSeq
 
 
 companiesB 
