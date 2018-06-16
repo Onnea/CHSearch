@@ -50,7 +50,14 @@ namespace Onnea
                     
                     using ( var db = Commands.GetDatabase() )
                     {
-                        Commands.Fetch( db, from, count );
+                        int counter = 0;
+                        foreach ( var companyInfo in Commands.FetchCompanyInfos( db, from, count ) )
+                        {
+                            if ( counter++ % Math.Max( 1, ( count / 100 ) ) == 0 )
+                            {
+                                Console.WriteLine( $"Checkpoint: fetched company number {companyInfo.CompanyNumber}" );
+                            }
+                        }
                     }
                     ret = $"Done fetching at {DateTime.Now:yyyy-MM-dd HH:mm:ss.ffffff}";
                 }

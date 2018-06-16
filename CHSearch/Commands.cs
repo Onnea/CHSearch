@@ -95,7 +95,7 @@ namespace Onnea
         }
 
         /// <returns>A sequence of company numbers together with whether they were actually fetched from the web.</returns>
-        public static IEnumerable<FetchResult> Fetch( LiteDatabase db, int from, int count )
+        public static IEnumerable<FetchResult> FetchCompanyInfos( LiteDatabase db, int from, int count )
         {
             Console.WriteLine( $"Fetching company info from {from} to {from + count - 1}" );
 
@@ -206,9 +206,7 @@ namespace Onnea
                         } ), companies );
                     //Console.WriteLine( $"-------Fetching {result.CompanyNumber} ERROR: {result.Message?.Substring( 0, Math.Min( result.Message.Length, 60 ) )}-------" );
                 }
-
-                Console.Write( $".{( ++resultCount % 60 == 0 ? ( $"fetched {resultCount}\n" ) : "" )}" );
-
+                
                 yield return ( new FetchResult
                 {
                     CompanyNumber = result.CompanyNumber,
