@@ -53,7 +53,7 @@ namespace Onnea
                         int counter = 0;
                         foreach ( var companyInfo in Commands.FetchCompanyInfos( db, from, count ) )
                         {
-                            if ( counter++ % Math.Max( 1, ( count / 100 ) ) == 0 )
+                            if ( counter++ % Math.Min( 1000, Math.Max( 1, ( count / 100 ) ) ) == 0 )
                             {
                                 Console.WriteLine( $"Checkpoint: fetched company number {companyInfo.CompanyNumber}" );
                             }
