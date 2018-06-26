@@ -12,3 +12,7 @@ PocoGeneration/obj/
 .gitignore.swp
 FsLab.Journal/paket-files/paket.restore.cached
 PocoGeneration/generated/CompanyInfo.cs
+CHSearch/shell.log
+web/
+notebooks/.ipynb_checkpoints/CHSearch_examples-checkpoint.ipynb
+notebooks/shell.log
