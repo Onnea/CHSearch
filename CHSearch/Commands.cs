@@ -198,7 +198,7 @@ namespace Onnea
                         // This company JSON was fetched from the web.
                         CompanyInfo ci = UpsertCompany( result.Json, companies );
                         //Console.WriteLine( JsonConvert.SerializeObject(ci, Newtonsoft.Json.Formatting.Indented ) );
-                        Console.Write( $"Upserted: {ci.CompanyNumber}, {ci.CompanyStatus.PadLeft(9)}, {ci.CompanyName}, {ci.RegisteredOfficeAddress.Locality}, {ci.RegisteredOfficeAddress.PostalCode}" );
+                        Console.WriteLine( $"Fetched {companyNumberList.First()}-{ci.CompanyNumber}, {ci.CompanyStatus.PadLeft(9)}, {ci.CompanyName}, {ci.RegisteredOfficeAddress.Locality}, {ci.RegisteredOfficeAddress.PostalCode}" );
                     }
                     //Console.WriteLine($"\n-------Fetching {result.CompanyNumber} OK   : {( result.Json != null ? "JSON upserted" : result.Message )}-------" );
                 }
@@ -228,11 +228,7 @@ namespace Onnea
                         Start          = companyNumberList.First(),
                         End            = result.CompanyNumber
                     };
-
-                    if ( result.Success )
-                    {
-                        Console.WriteLine( $", updating fetched range to {nfr.Start}-{nfr.End}" );
-                    }
+                    
                     fetchedRanges.Upsert( nfr );
                 }
             }
