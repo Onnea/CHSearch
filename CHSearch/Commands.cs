@@ -113,7 +113,7 @@ namespace Onnea
             Console.WriteLine( $"Getting already fetched ranges" );
             var fetchedRanges      = db.GetCollection<FetchedRange>( "fetchedRanges" );
             var fetchedRangesList  = fetchedRanges.FindAll().ToList();
-            var fetchedRangesMaxId = fetchedRangesList.Max( fr => fr.FetchedRangeId );
+            var fetchedRangesMaxId = fetchedRangesList.Any() ? fetchedRangesList.Max( fr => fr.FetchedRangeId ) : 0;
 
             // If we have not yet ever recorded any fetched ranges, use the very slow method of 
             // populate the list of known fetched ranges from the existing database.
@@ -122,6 +122,9 @@ namespace Onnea
                 Console.WriteLine( $"No fetched ranges found, creating fetched ranges" );
 
                 var allExistingCompanyNumbers = companies.FindAll().Select( c => c.CompanyInfoId );
+
+                if ( allExistingCompanyNumbers.Any() )
+                {
                 var first = allExistingCompanyNumbers.Min();
                 var last = allExistingCompanyNumbers.Max();
                 var currentRangeStart = -1;
@@ -168,6 +171,7 @@ namespace Onnea
                 }
 
                 fetchedRangesList.ForEach( completedRange => fetchedRanges.Upsert( completedRange ) );
+            }
             }
 
             Task fetcher = Task.Run( async () =>
