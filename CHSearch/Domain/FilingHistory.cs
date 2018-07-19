@@ -1,9 +1,11 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 
 namespace Onnea.Domain
 {
     public class FilingHistory : DTO.Generated.FilingHistoryList.FilingHistoryListGenerated
     {
+        [JsonProperty( PropertyName = "id" )]
         public int FilingHistoryId { get; set; }
 
         public DateTime AsOf { get; set; }

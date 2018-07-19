@@ -1,5 +1,6 @@
 ﻿using LiteDB;
 using Newtonsoft.Json;
+using Onnea.DbInterfaces;
 using Onnea.Domain;
 using System;
 using System.Collections.Concurrent;
@@ -7,7 +8,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
-using System.Linq.Expressions;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -22,10 +22,11 @@ namespace Onnea
                 json, new JsonConverter[] { FlakyJsonDateTimeConverter.INSTANCE, 
                                             FlakyJsonStringListConverter.INSTANCE });
 
-        static CompanyInfo UpsertCompany(string companyInfoJson,
+        static CompanyInfo UpsertCompany( string companyInfoJson,
                                           LiteCollection<CompanyInfo> companies)
         {
             var companyInfo = TFromJson<CompanyInfo>(companyInfoJson);
+            var cosmosDbResult = _cosmosDb.UpsertCompanyInfo( companyInfo ).Result;
             companyInfo.CompanyInfoId = int.Parse(companyInfo.CompanyNumber);
             // Insert new customer document (Id will be auto-incremented)
             companies.Upsert(companyInfo);
@@ -58,7 +59,8 @@ namespace Onnea
             }
         }
 
-        private static LiteDB.BsonMapper _bsonMapper = new BsonMapper();
+        private static LiteDB.BsonMapper          _bsonMapper = new BsonMapper();
+        private static readonly CosmosDbInterface _cosmosDb   = new DbInterfaces.CosmosDbInterface();
 
         static Commands()
         {
@@ -67,6 +69,8 @@ namespace Onnea
                 value => value.IsString
                   ? new string[] { value }
                   : value.AsArray.Select(item => item.AsString).ToArray());
+
+            _cosmosDb.Init();
         }
 
         public static LiteDatabase GetDatabase( string dbFilePath = null )
@@ -125,53 +129,53 @@ namespace Onnea
 
                 if ( allExistingCompanyNumbers.Any() )
                 {
-                var first = allExistingCompanyNumbers.Min();
-                var last = allExistingCompanyNumbers.Max();
-                var currentRangeStart = -1;
-                var prevCompanyNumber = -1;
-                var completedRangesCount = 0;
+                    var first = allExistingCompanyNumbers.Min();
+                    var last = allExistingCompanyNumbers.Max();
+                    var currentRangeStart = -1;
+                    var prevCompanyNumber = -1;
+                    var completedRangesCount = 0;
 
-                for ( var currCompanyNumber = first; currCompanyNumber < last; ++currCompanyNumber )
-                {
-                    if ( currentRangeStart == -1 )
+                    for ( var currCompanyNumber = first; currCompanyNumber < last; ++currCompanyNumber )
                     {
-                        currentRangeStart = currCompanyNumber;
-                    }
+                        if ( currentRangeStart == -1 )
+                        {
+                            currentRangeStart = currCompanyNumber;
+                        }
 
-                    if ( prevCompanyNumber == -1 )
-                    {
+                        if ( prevCompanyNumber == -1 )
+                        {
+                            prevCompanyNumber = currCompanyNumber;
+                            continue;
+                        }
+
+                        if ( currCompanyNumber - prevCompanyNumber > 1 )
+                        {
+                            var completedRange = new FetchedRange()
+                            {
+                                FetchedRangeId = completedRangesCount++,
+                                Start = currentRangeStart,
+                                End = prevCompanyNumber
+                            };
+                            fetchedRangesList.Add( completedRange );
+                            currentRangeStart = currCompanyNumber;
+                        }
                         prevCompanyNumber = currCompanyNumber;
-                        continue;
                     }
 
-                    if ( currCompanyNumber - prevCompanyNumber > 1 )
+                    if ( currentRangeStart != -1 )
                     {
                         var completedRange = new FetchedRange()
                         {
                             FetchedRangeId = completedRangesCount++,
                             Start = currentRangeStart,
-                            End = prevCompanyNumber
+                            End = last
                         };
+
                         fetchedRangesList.Add( completedRange );
-                        currentRangeStart = currCompanyNumber;
                     }
-                    prevCompanyNumber = currCompanyNumber;
+
+                    fetchedRangesList.ForEach( completedRange => fetchedRanges.Upsert( completedRange ) );
                 }
-
-                if ( currentRangeStart != -1 )
-                {
-                    var completedRange = new FetchedRange()
-                    {
-                        FetchedRangeId = completedRangesCount++,
-                        Start = currentRangeStart,
-                        End = last
-                    };
-
-                    fetchedRangesList.Add( completedRange );
-                }
-
-                fetchedRangesList.ForEach( completedRange => fetchedRanges.Upsert( completedRange ) );
-            }
             }
 
             Task fetcher = Task.Run( async () =>
