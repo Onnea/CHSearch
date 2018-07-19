@@ -5,8 +5,12 @@ namespace Onnea
     public class Definitions
     {
         public static string BaseDirPath => @"C:\temp\CHSearch";
-        public static string DbFilePath  => Path.Combine(BaseDirPath, "db", "main.db" );
-        public static string ApiKeyPath  => Path.Combine(BaseDirPath, "etc", "apikey.txt" );
+#if DEBUG
+        public static string DbFilePath  => Path.Combine(BaseDirPath, "db", "temp.db" );
+#else
+        public static string DbFilePath  => Path.Combine(BaseDirPath, "db", "main.new.db" );
+#endif
+        public static string ApiKeyPath  => Path.Combine( BaseDirPath, "etc", "apikey.txt" );
         public static string ApiKey      => File.ReadAllText(ApiKeyPath);
 
         private static string DocumentsDirPath          => Path.Combine(BaseDirPath,      "documents" );
