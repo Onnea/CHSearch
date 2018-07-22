@@ -215,7 +215,7 @@ namespace Onnea
                     UpsertCompany( JsonConvert.SerializeObject(
                         new CompanyInfo()
                         {
-                            CompanyNumber = $"{result.CompanyNumber}",
+                            CompanyNumber = $"{result.CompanyNumber}".PadLeft( 8, '0' ),
                             DoesNotExist = true
                         } ), companies );
                     //Console.WriteLine( $"-------Fetching {result.CompanyNumber} ERROR: {result.Message?.Substring( 0, Math.Min( result.Message.Length, 60 ) )}-------" );
